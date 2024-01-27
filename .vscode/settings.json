@@ -4,6 +4,10 @@
         "5-2": "c",
         "stdlib.h": "c",
         "regex.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "dirent.h": "c",
+        "unistd.h": "c",
+        "types.h": "c",
+        "stat.h": "c"
     }
 }
