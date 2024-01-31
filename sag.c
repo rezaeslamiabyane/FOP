@@ -12,6 +12,109 @@
 #include <math.h>
 #include <time.h>
 #include <stdint.h>
+int finding_last_commit_of_a_branch(char *);
+
+int nth_commit_of_a_branch(char *branch , int max,int n){
+    char line[1000];
+    chdir(".sag\\commits");
+    char num[100];
+    int x=0;
+    for(int i=max;n>0;i++){
+        sprintf(num,"%d",i);
+        chdir(num);
+        FILE *file=fopen("branch.txt","r");
+        fgets(line,sizeof(line),file);
+        if(strcmp(line,branch)==0){
+            n--;
+        }
+        chdir("..");
+        x=i;
+    }
+    chdir("..");
+    chdir("..");
+    return x;
+}
+
+void delete_all_files(){
+    DIR *dir=opendir(".");
+    struct stat info;
+    struct dirent *entry;
+    char system_command[1000];
+    while((entry=readdir(dir))!=NULL){
+        stat(entry->d_name,&info);
+        if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0||strcmp(entry->d_name,".sag")==0)
+            continue;
+        if(S_ISDIR(info.st_mode)){
+            sprintf(system_command,"rmdir /s /q %s",entry->d_name);
+            system(system_command);
+        }
+        else{
+           sprintf(system_command,"del %s",entry->d_name);
+            system(system_command); 
+        }
+        
+        
+    }
+    
+}
+void change_project_to_the_commit_id(int id){
+    char path[1000];
+    char file_path[1000];
+    char file_name[1000];
+    char line[1000];
+    char address_copy[1000];
+    sprintf(path,".sag\\commits\\%d\\files.txt",id);
+    FILE *file=fopen(path,"r");
+    while(fgets(line,sizeof(line),file)!=NULL){
+        if (strlen(line) > 0 && line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        char dir_name[1000];
+        dir_name[0]='\0';
+        char *address=strtok(line,"#");
+        char *file_commit_num=strtok(NULL,"#");
+        sprintf(address_copy,"%s",address);
+        char *str=strtok(address_copy,"\\:.");
+        while(str!=NULL){
+            strcat(dir_name,str);
+            str=strtok(NULL,"\\:.");
+        }
+        sprintf(file_path,".sag\\files\\%s\\%s",dir_name,file_commit_num);
+        DIR *dir=opendir(file_path);
+        struct dirent *entry;
+        while((entry=readdir(dir))!=NULL){
+            if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0||strcmp(entry->d_name,".sag")==0)
+                continue;
+            if(strcmp(entry->d_name,"info.txt")!=0){
+                sprintf(file_name,"%s",entry->d_name);
+            }
+            
+        }
+        sprintf(file_path,".sag\\files\\%s\\%s\\%s",dir_name,file_commit_num,file_name);
+        char *dir_address_proj=dirname(address);
+        char system_command[1000];
+        sprintf(system_command,"mkdir %s",dir_address_proj);
+        system(system_command);
+        sprintf(system_command,"copy %s %s",file_path,dir_address_proj);
+        system(system_command);
+    }
+}
+
+bool is_it_branch(char* name){
+    char name_copy[1000];
+    strcpy(name_copy,name);
+    strcat(name_copy,".txt");
+    DIR *dir=opendir(".sag\\all_branches");
+    struct dirent *entry;
+    while((entry=readdir(dir))!=NULL){
+        if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0||strcmp(entry->d_name,".sag")==0)
+            continue;
+        if(strcmp(name_copy,entry->d_name)==0){
+            return true;
+        }
+    }
+    return false;
+}
 void print_log(int);
 void show_commit_info_with_word_f_flag(int i,char **argv ,int argc ){
     char x[1000];
@@ -468,9 +571,9 @@ bool check_file_directory_exists(char *filepath) {
     return false;
 }
 
-int run_commit(char * const argv[]) {
+int run_commit(char * const argv) {
     char message[1000];
-    strcpy(message, argv[3]);
+    strcpy(message, argv);
     DIR *dir=opendir(".sag\\staged_area"); 
     struct dirent *entry;
     int x=0;
@@ -505,7 +608,7 @@ int run_commit(char * const argv[]) {
 
 
 int finding_last_commit_of_a_branch(char *branch){
-    chdir(".sag\\commit");
+    chdir(".sag\\commits");
     DIR *dir=opendir(".");
     struct dirent *entry;
     int max=-1;
@@ -519,7 +622,9 @@ int finding_last_commit_of_a_branch(char *branch){
         if (strlen(b) > 0 && b[strlen(b) - 1] == '\n') {
             b[strlen(b) - 1] = '\0';
         }
-        if(strcmp(branch,b)==0){
+        char *str=strtok(b,":");
+        str=strtok(NULL,":");
+        if(strcmp(branch,str)==0){
             max=atoi(entry->d_name);
         }
         chdir("..");
@@ -1194,7 +1299,6 @@ int permissions(char *path){
           third_digit+=1;
     permission=first_digit*100+second_digit*10+third_digit;
     return permission;
-
 }
 void reset_undo(FILE* file){
     char line[1000];
@@ -1537,16 +1641,17 @@ int init(int test){
         FILE *file=fopen("add_log.txt","w");
         fclose(file);
         file=fopen("curr_branch.txt","w");
-        fprintf(file,"%s\n","master");
+        fprintf(file,"%s","master");
+        fclose(file);
+        file=fopen("all_branches.txt","w");
+        fprintf(file,"%s","master");
         fclose(file);
         file=fopen("curr_commit.txt","w");
         fclose(file);
+        file=fopen("commit_shorts.txt","w");
+        fclose(file);
         file=fopen("tracked.txt","w");
         mkdir("staged_area");
-        mkdir("all_branches");
-        chdir("all_branches");
-        file=fopen("master.txt","w");
-        chdir("..");
         fclose(file);
         system("MOVE C:\\Users\\Reza\\git\\local.txt");
         system("MOVE C:\\Users\\Reza\\git\\alias_command_local.txt");
@@ -1854,16 +1959,109 @@ int main(int argc,char ** argv){
         else{
             char absolute_adress[1000];
             getcwd(absolute_adress,sizeof(absolute_adress));
-            if(strlen(argv[3])>72){
-                printf("BIG MESSAGE\n");
-            }
-            else if(argc<4){
-                printf("MESSAGE??????\n");
+            if(strcmp(argv[2],"-m")==0){
+                if(strlen(argv[3])>72){
+                    printf("BIG MESSAGE\n");
+                }
+                else if(argc<4){
+                    printf("MESSAGE??????\n");
+                }
+                else{
+                    run_commit(argv[3]);
+                }
             }
             else{
-                run_commit(argv);
+                FILE *file=fopen(".sag\\commit_shorts.txt","r");
+                char short_name[1000];
+                while(fgets(short_name,sizeof(short_name),file)!=NULL){
+                    if (strlen(short_name) > 0 && short_name[strlen(short_name) - 1] == '\n') {
+                        short_name[strlen(short_name) - 1] = '\0';
+                    }
+                    char *str=strtok(short_name,"#");
+                    if(strcmp(str,argv[3])==0){
+                        str=strtok(NULL,"#");
+                        
+                        run_commit(str);
+                    }
+                }
+                
             }
         }
+    }
+    else if(strcmp(argv[1],"set")==0){
+        if(init(1)==1){
+            printf("NOT INITED YET");
+        }
+        else{
+            FILE *file=fopen(".sag\\commit_shorts.txt","a");
+            fprintf(file,"%s#%s\n",argv[5],argv[3]);
+        }
+    }
+    else if(strcmp(argv[1],"replace")==0){
+        if(init(1)==1){
+            printf("NOT INITED YET");
+        }
+        else{
+            FILE *file=fopen(".sag\\commit_shorts.txt","r");
+            FILE *file2=fopen(".sag\\commit_shorts1.txt","w");
+                char short_name[1000];
+                char short_name_c[1000];
+                bool exist=false;
+                while(fgets(short_name,sizeof(short_name),file)!=NULL){
+                    if (strlen(short_name) > 0 && short_name[strlen(short_name) - 1] == '\n') {
+                        short_name[strlen(short_name) - 1] = '\0';
+                    }
+                    strcpy(short_name_c,short_name);
+                    char *str=strtok(short_name_c,"#");
+                    if(strcmp(str,argv[5])==0){
+                        exist=true;
+                        fprintf(file2,"%s#%s\n",argv[5],argv[3]);
+                    }
+                    else{
+                        fprintf(file2,"%s\n",short_name);
+                    }
+                }
+                if(exist==false){
+                    printf("NO SHORTCUT");
+                }
+                fclose(file);
+                fclose(file2);
+            system("del .sag\\commit_shorts.txt");
+            rename(".sag\\commit_shorts1.txt",".sag\\commit_shorts.txt");
+        }
+    }
+    else if(strcmp(argv[1],"remove")==0){
+        if(init(1)==1){
+            printf("NOT INITED YET");
+        }
+        else{
+            FILE *file=fopen(".sag\\commit_shorts.txt","r");
+            FILE *file2=fopen(".sag\\commit_shorts1.txt","w");
+                char short_name[1000];
+                char short_name_c[1000];
+                bool exist=false;
+                while(fgets(short_name,sizeof(short_name),file)!=NULL){
+                    if (strlen(short_name) > 0 && short_name[strlen(short_name) - 1] == '\n') {
+                        short_name[strlen(short_name) - 1] = '\0';
+                    }
+                    strcpy(short_name_c,short_name);
+                    char *str=strtok(short_name_c,"#");
+                    if(strcmp(str,argv[3])==0){
+                        exist=true;
+                    }
+                    else{
+                        fprintf(file2,"%s\n",short_name);
+                    }
+                }
+                if(exist==false){
+                    printf("NO SHORTCUT");
+                }
+                fclose(file);
+                fclose(file2);
+            system("del .sag\\commit_shorts.txt");
+            rename(".sag\\commit_shorts1.txt",".sag\\commit_shorts.txt");
+        }
+
     }
     else if(strcmp(argv[1],"diff")==0){
         char path_dir[100];
@@ -1971,45 +2169,107 @@ int main(int argc,char ** argv){
         }
         else{
             if(argc==2){
-                DIR *dir=opendir(".sag\\all_branches");
-                struct dirent *entry;
-                while((entry=readdir(dir))!=NULL){
-                    if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0||strcmp(entry->d_name,".sag")==0)
-                        continue;
-                    for(int i=0;i<strlen(entry->d_name)-4;i++){
-                        printf("%c",entry->d_name[i]);
-                    }
-                    printf("\n");
-                }   
+                char line[1000];
+                FILE *file=fopen(".sag\\all_branches.txt","r");
+                while(fgets(line,sizeof(line),file)!=NULL){
+                    printf("%s",line);
+                }
+                fclose(file);
             }
             else{
-                char branch[1000];
-                
-                strcpy(branch,argv[2]);
-                strcat(branch,".txt");
-                DIR *dir=opendir(".sag\\all_branches");
-                struct dirent *entry;
+                char line[1000];
+                FILE *file=fopen(".sag\\all_branches.txt","r");
                 bool exist=false;
-                while((entry=readdir(dir))!=NULL){
-                    if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0||strcmp(entry->d_name,".sag")==0)
-                        continue;
-                    if(strcmp(branch,entry->d_name)==0){
-                        exist=true;
-                        break;
+                while(fgets(line,sizeof(line),file)!=NULL){
+                    if (strlen(line) > 0 && line[strlen(line) - 1] == '\n') {
+                        line[strlen(line) - 1] = '\0';
+                    }
+                    if(strcmp(line,argv[3])==0){
+                        exist=false;
                     }
                 }
                 if(exist){
                     printf("THIS BRANCH HAD CREATED BEFOR");
                 }
                 else{
-                    char create[1000];
-                    sprintf(create,".sag\\all_branches\\%s",branch);
-                    FILE *file=fopen(create,"w");
-                    fprintf(file,"%d",finding_last_commit_folder(opendir(".sag\\commits")));
+                    
                 }
             }
         }
+    }
+    else if(strcmp(argv[1],"checkout")==0){
+        if(init(1)==1){
+            printf("NOT INITED YET");
+        }
+        else{
+            if(strcmp(argv[2],"HEAD")==0){
+                delete_all_files();
+                char line[100];
+                FILE *file=fopen(".sag\\curr_branch.txt","r");
+                fgets(line,sizeof(line),file);
+                int last_barnch_commit=finding_last_commit_of_a_branch(line);
+                file=fopen(".sag\\curr_commit.txt","w");
+                fprintf(file,"%d",last_barnch_commit);
+                printf("%d",last_barnch_commit);
+                change_project_to_the_commit_id(last_barnch_commit);
+            }
+            else if(strcmp(argv[2],"HEAD-n")==0){
+                delete_all_files();
+                char line[100];
+                FILE *file=fopen(".sag\\curr_branch.txt","r");
+                fgets(line,sizeof(line),file);
+                int last_barnch_commit=finding_last_commit_of_a_branch(line);
+                int nth_branch=nth_commit_of_a_branch(line,last_barnch_commit,atoi(argv[3]));
+                file=fopen(".sag\\curr_commit.txt","w");
+                fprintf(file,"%d",nth_branch);
+                change_project_to_the_commit_id(nth_branch);
 
+            }
+            else if(is_it_branch(argv[2])){
+                int last_barnch_commit=finding_last_commit_of_a_branch(argv[2]);
+                if(last_barnch_commit<0){
+                    delete_all_files();
+                    char line[100];
+                    char branch_path[1000];
+                    sprintf(branch_path,".sag\\all_branches\\%s.txt",argv[2]);
+                    FILE *file=fopen(branch_path,"r");
+                    if(fgets(line,sizeof(line),file)!=NULL){
+                        FILE *file=fopen(".sag\\curr_branch.txt","w");
+                        fprintf(file,"%s",argv[2]);
+                        file=fopen(".sag\\curr_commit.txt","w");
+                        fprintf(file,"%d",atoi(line));
+                        change_project_to_the_commit_id(last_barnch_commit);
+                    }
+                    else{
+                        printf("NOTHING COMMITED IN THIS BRANCH");
+                    }
+                }
+                else{
+                    delete_all_files();
+                    FILE *file=fopen(".sag\\curr_branch.txt","w");
+                    fprintf(file,"%s",argv[2]);
+                    file=fopen(".sag\\curr_commit.txt","w");
+                    fprintf(file,"%d",last_barnch_commit);
+                    change_project_to_the_commit_id(last_barnch_commit);
+                }
+            }
+            else{
+                delete_all_files();
+                char file_path[1000];
+                char branch[1000];
+                sprintf(file_path,".sag\\commits\\%s\\branch.txt",argv[2]);
+                FILE *file=fopen(file_path,"r");
+                fgets(branch,sizeof(branch),file);
+                fclose(file);
+                char *str=strtok(branch,":");
+                str=strtok(NULL,":");
+                file=fopen(".sag\\curr_branch.txt","w");
+                fprintf(file,"%s",str);
+                file=fopen(".sag\\curr_commit.txt","w");
+                fprintf(file,"%s",argv[2]);
+                change_project_to_the_commit_id(atoi(argv[2]));
+            }
+        }
     }
     return 0;
 }
